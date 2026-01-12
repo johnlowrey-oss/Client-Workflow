@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Land Caller | Operational Workflows</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mermaid JS for Diagrams -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#dcfce7', /* green-100 */
+                primaryTextColor: '#166534', /* green-800 */
+                primaryBorderColor: '#16a34a', /* green-600 */
+                lineColor: '#64748b', /* slate-500 */
+                secondaryColor: '#dbeafe', /* blue-100 */
+                tertiaryColor: '#fef9c3' /* yellow-100 */
+            },
+            flowchart: { curve: 'basis' }
+        });
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .diagram-container {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+        h2 { margin-bottom: 1rem; color: #0f172a; font-weight: 700; font-size: 1.25rem; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10 border-b border-slate-200 pb-6">
+            <h1 class="text-3xl font-bold text-slate-900">Land Caller Logic Flows v2.1</h1>
+            <p class="mt-2 text-slate-600">Updated to reflect OAuth logic, Zoho/Convoso routing, and Data-Only paths. (Syntax Fixed)</p>
+        </header>
+
+        <!-- 1. BASIC CAMPAIGN -->
+        <section>
+            <div class="flex items-center mb-4">
+                <h2>1. Basic Campaign Workflow</h2>
+                <span class="badge bg-blue-100 text-blue-800 border border-blue-200">Scenario 1</span>
+            </div>
+            <div class="diagram-container">
+                <pre class="mermaid">
+flowchart TD
+    %% Reg
+    Start((Web Signup)) --> Email[Email Login sent]
+    Email --> Login[Log in to LC CRM]
+    Login --> Dash["Access Data Dashboard\n(OAuth 2.0 / SSO)"]
+    
+    %% Selection
+    Dash --> Select{Select Tier}
+    Select -- "Tier 1 ($1100)" --> Req1["Req: ~5k Records"]
+    Select -- "Tier 2 ($1890)" --> Req2["Req: ~8k Records"]
+    Select -- "Tier 3 ($2650)" --> Req3["Req: ~10k Records"]
+    
+    %% Action
+    Req1 & Req2 & Req3 --> Pull[Client Pulls Records]
+    Pull --> Pay[Checkout via Stripe]
+    
+    %% Payment Logic
+    Pay --> Split{Stripe Connect Split}
+    Split -->|Data Cost| Siftr
+    Split -->|Remainder| LC[Land Caller]
+    
+    %% Fulfillment
+    Split --> Zoho["Push List to Zoho (Admin)"]
+    Zoho --> Convoso[Upload to Convoso Dialer]
+    Convoso -->|Dialing...| Leads[Leads Generated]
+    Leads --> PushCRM[Push Leads to Client CRM]
+    
+    %% Lifecycle
+    PushCRM --> Window[30-Day Active Window]
+    Window --> Check{Order More?}
+    Check -- Yes --> Select
+    Check -- No --> Freeze["Account Frozen\n(Export Only)"]
+    
+    %% Maintenance
+    Freeze --> Maint{Maintenance?}
+    Maint -- "Limited ($)" --> Keep[Limited Access]
+    Maint -- "Upgrade ($$)" --> Full[Full CRM Access]
+    Maint -- No --> Freeze
+                </pre>
+            </div>
+        </section>
+
+        <!-- 2. ENTERPRISE CAMPAIGN -->
+        <section>
+            <div class="flex items-center mb-4">
+                <h2>2. Enterprise Campaign Workflow</h2>
+                <span class="badge bg-green-100 text-green-800 border border-green-200">Scenario 2</span>
+            </div>
+            <div class="diagram-container">
+                <pre class="mermaid">
+flowchart TD
+    %% Reg
+    Start((Web Signup)) --> Email[Email GHL Reg Link]
+    Email --> Reg[Register & Login GHL]
+    
+    %% Configuration
+    Reg --> Config["Select Package:\n3/6/12 Month Term"]
+    Config --> Agents["Select Agent Count\n(-$100/mo per extra)"]
+    Agents --> Contract[Contract Gen & Sign]
+    
+    %% Initial Payment
+    Contract --> Pay1[Pay Month 1 & Setup Autopay]
+    Pay1 --> Setup[Script & Prefs Setup]
+    
+    %% Data Phase
+    Setup --> Tut[Data Dash Tutorial]
+    Tut --> DataPull[Pull Wholesale Data]
+    DataPull --> DataPay{Payment Method}
+    
+    %% Payment Ambiguity
+    DataPay -- "Option A" --> Split[Stripe Auto-Split]
+    DataPay -- "Option B" --> SiftrPay["Pay Siftr -> Monthly Payout to LC"]
+    
+    %% Fulfillment
+    Split & SiftrPay --> Store[Store in Client CRM]
+    Store --> Zoho[Push to Zoho]
+    Zoho --> Convoso[Upload to Convoso]
+    Convoso --> Leads[Leads to Client CRM]
+    
+    %% Lifecycle
+    Leads --> Cycle[4-Week Cycle Loop]
+    Cycle --> Renew{End of Term?}
+    Renew -- "Auto-Renew" --> Cycle
+    Renew -- "Cancel Dialing" --> Maint{Maintenance?}
+    
+    %% End State
+    Maint -- "Pay Fee" --> Full[Keep Full CRM]
+    Maint -- "No Fee" --> Frozen["CRM View Only\nData Dash Still Active (Standard Rates)"]
+                </pre>
+            </div>
+        </section>
+
+        <!-- 3. DATA ONLY CLIENT -->
+        <section>
+            <div class="flex items-center mb-4">
+                <h2>3. Non-Dialing Client (Data Only)</h2>
+                <span class="badge bg-purple-100 text-purple-800 border border-purple-200">Scenario 3</span>
+            </div>
+            <div class="diagram-container">
+                <pre class="mermaid">
+flowchart LR
+    Start((Web Signup)) --> Choice{Subscription?}
+    
+    Choice -- "No (Basic)" --> Std[Access Standard Rates]
+    Choice -- "Yes (Premium)" --> Whl["Access Wholesale Rates\n(Monthly Fee)"]
+    
+    Std & Whl --> Pull[Pull Data]
+    Pull --> Pay[Checkout]
+    Pay --> Download[Download CSV]
+    
+    %% No CRM
+    Download -.-> Note[No CRM Created]
+                </pre>
+            </div>
+        </section>
+
+        <!-- 4. TECHNICAL ARCHITECTURE -->
+        <section>
+            <div class="flex items-center mb-4">
+                <h2>4. Technical Fulfillment Architecture</h2>
+                <span class="badge bg-slate-100 text-slate-800 border border-slate-200">Integration Map</span>
+            </div>
+            <div class="diagram-container">
+                <pre class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant GHL as GHL (Dashboard)
+    participant Str as Stripe
+    participant Sift as Siftr
+    participant LC as LC Admin (Zoho)
+    participant D as Convoso (Dialer)
+
+    Note over C, D: Basic Campaign Fulfillment Flow
+
+    C->>GHL: 1. Login & Auth (OAuth)
+    GHL->>Sift: 2. Load Dashboard (Iframe)
+    C->>Sift: 3. Select Tier & Pull Data
+    C->>Str: 4. Submit Payment
+    
+    rect rgb(240, 248, 255)
+        Note right of Str: Payment Splitting
+        Str->>Sift: Data Cost
+        Str->>LC: LC Margin
+    end
+    
+    Str-->>Sift: Success Webhook
+    Sift->>LC: 5. Push List to Zoho
+    LC->>D: 6. Upload List to Dialer
+    
+    Note over D, GHL: Dialing Campaign Active...
+    
+    D->>GHL: 7. Post Qualified Leads (API)
+    GHL->>C: 8. Notify Client
+                </pre>
+            </div>
+        </section>
+
+    </div>
+
+</body>
+</html>
