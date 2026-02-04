@@ -49,8 +49,8 @@
 
     <div class="max-w-7xl mx-auto">
         <header class="mb-10 border-b border-slate-200 pb-6">
-            <h1 class="text-3xl font-bold text-slate-900">Land Caller Logic Flows v2.2</h1>
-            <p class="mt-2 text-slate-600">Updated: Basic Campaign Payment now precedes Data Dashboard access (Credit Granting Model).</p>
+            <h1 class="text-3xl font-bold text-slate-900">Land Caller Logic Flows v2.3</h1>
+            <p class="mt-2 text-slate-600">Updated: Enterprise Contract Payment Options & Reversed Data Payment Split (Siftr -> LC).</p>
         </header>
 
         <!-- 1. BASIC CAMPAIGN -->
@@ -126,21 +126,23 @@ flowchart TD
     Config --> Agents["Select Agent Count\n(-$100/mo per extra)"]
     Agents --> Contract[Contract Gen & Sign]
     
-    %% Initial Payment
-    Contract --> Pay1[Pay Month 1 & Setup Autopay]
-    Pay1 --> Setup[Script & Prefs Setup]
+    %% Contract Payment
+    Contract --> PayOpt{Payment Terms}
+    PayOpt -- Monthly --> Pay1[Pay Month 1 & Setup Autopay]
+    PayOpt -- Upfront --> PayFull["Pay Full Contract\n(Discount Applied)"]
+    
+    Pay1 & PayFull --> Setup[Script & Prefs Setup]
     
     %% Data Phase
     Setup --> Tut[Data Dash Tutorial]
     Tut --> DataPull[Pull Wholesale Data]
-    DataPull --> DataPay{Payment Method}
     
-    %% Payment Ambiguity
-    DataPay -- "Option A" --> Split[Stripe Auto-Split]
-    DataPay -- "Option B" --> SiftrPay["Pay Siftr -> Monthly Payout to LC"]
+    %% Data Payment (Goes to Siftr Stripe)
+    DataPull --> SiftrPay[Checkout via Siftr Stripe]
+    SiftrPay --> Split["Stripe Auto-Split\n(Siftr pays LC share)"]
     
     %% Fulfillment
-    Split & SiftrPay --> Store[Store in Client CRM]
+    Split --> Store[Store in Client CRM]
     Store --> Zoho[Push to Zoho]
     Zoho --> Convoso[Upload to Convoso]
     Convoso --> Leads[Leads to Client CRM]
