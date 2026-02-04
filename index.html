@@ -49,8 +49,8 @@
 
     <div class="max-w-7xl mx-auto">
         <header class="mb-10 border-b border-slate-200 pb-6">
-            <h1 class="text-3xl font-bold text-slate-900">Land Caller Logic Flows v2.1</h1>
-            <p class="mt-2 text-slate-600">Updated to reflect OAuth logic, Zoho/Convoso routing, and Data-Only paths. (Syntax Fixed)</p>
+            <h1 class="text-3xl font-bold text-slate-900">Land Caller Logic Flows v2.2</h1>
+            <p class="mt-2 text-slate-600">Updated: Basic Campaign Payment now precedes Data Dashboard access (Credit Granting Model).</p>
         </header>
 
         <!-- 1. BASIC CAMPAIGN -->
@@ -65,25 +65,29 @@ flowchart TD
     %% Reg
     Start((Web Signup)) --> Email[Email Login sent]
     Email --> Login[Log in to LC CRM]
-    Login --> Dash["Access Data Dashboard\n(OAuth 2.0 / SSO)"]
-    
-    %% Selection
-    Dash --> Select{Select Tier}
+
+    %% Selection & Payment (Happens First now)
+    Login --> Select{Select Tier}
     Select -- "Tier 1 ($1100)" --> Req1["Req: ~5k Records"]
     Select -- "Tier 2 ($1890)" --> Req2["Req: ~8k Records"]
     Select -- "Tier 3 ($2650)" --> Req3["Req: ~10k Records"]
-    
-    %% Action
-    Req1 & Req2 & Req3 --> Pull[Client Pulls Records]
-    Pull --> Pay[Checkout via Stripe]
-    
+
+    Req1 & Req2 & Req3 --> Pay[Checkout via Stripe]
+
     %% Payment Logic
     Pay --> Split{Stripe Connect Split}
     Split -->|Data Cost| Siftr
     Split -->|Remainder| LC[Land Caller]
-    
+
+    %% Credit Granting
+    Siftr --> Create["Create Siftr Profile\n& Apply Credits"]
+    Create --> Dash["Access Data Dashboard\n(Client pulls data w/ Credits)"]
+
+    %% Action
+    Dash --> Pull[Client Pulls Data]
+
     %% Fulfillment
-    Siftr --> Store["Push List to Client CRM (GHL)"]
+    Pull --> Store["Push List to Client CRM (GHL)"]
     Store --> Zoho["Push List to Zoho (Admin)"]
     Zoho --> Convoso[Upload to Convoso Dialer]
     Convoso -->|Dialing...| Leads[Leads Generated]
@@ -196,10 +200,8 @@ sequenceDiagram
 
     Note over C, D: Basic Campaign Fulfillment Flow
 
-    C->>GHL: 1. Login & Auth (OAuth)
-    GHL->>Sift: 2. Load Dashboard (Iframe)
-    C->>Sift: 3. Select Tier & Pull Data
-    C->>Str: 4. Submit Payment
+    C->>GHL: 1. Login & Select Tier
+    C->>Str: 2. Submit Payment
     
     rect rgb(240, 248, 255)
         Note right of Str: Payment Splitting
@@ -207,14 +209,18 @@ sequenceDiagram
         Str->>LC: LC Margin
     end
     
-    Str-->>Sift: Success Webhook
-    Sift->>LC: 5. Push List to Zoho
-    LC->>D: 6. Upload List to Dialer
+    Str-->>Sift: 3. Success Webhook (+ Credentials)
+    Sift->>Sift: 4. Create Profile & Apply Credits
+    
+    C->>Sift: 5. Access Dash & Pull Data (Credits)
+    Sift->>GHL: 6. Push List to Client CRM
+    Sift->>LC: 7. Push List to Zoho
+    LC->>D: 8. Upload List to Dialer
     
     Note over D, GHL: Dialing Campaign Active...
     
-    D->>GHL: 7. Post Qualified Leads (API)
-    GHL->>C: 8. Notify Client
+    D->>GHL: 9. Post Qualified Leads (API)
+    GHL->>C: 10. Notify Client
                 </pre>
             </div>
         </section>
