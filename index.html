@@ -45,12 +45,12 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 p-4 md:p-8">
+<body class="bg-slate-50 text-slate-800 p-8">
 
     <div class="max-w-7xl mx-auto">
         <header class="mb-10 border-b border-slate-200 pb-6">
             <h1 class="text-3xl font-bold text-slate-900">Land Caller Logic Flows v2.1</h1>
-            <p class="mt-2 text-slate-600">Updated to reflect OAuth logic, Zoho/Convoso routing, and Data-Only paths.</p>
+            <p class="mt-2 text-slate-600">Updated to reflect OAuth logic, Zoho/Convoso routing, and Data-Only paths. (Syntax Fixed)</p>
         </header>
 
         <!-- 1. BASIC CAMPAIGN -->
@@ -65,16 +65,16 @@ flowchart TD
     %% Reg
     Start((Web Signup)) --> Email[Email Login sent]
     Email --> Login[Log in to LC CRM]
-    Login --> Select{Select Tier}
+    Login --> Dash["Access Data Dashboard\n(OAuth 2.0 / SSO)"]
     
     %% Selection
-    Select -- "Tier 1 ($1100)" --> Req1["Req: ~5k Records\n(20 Leads)"]
-    Select -- "Tier 2 ($1890)" --> Req2["Req: ~8k Records\n(35 Leads)"]
-    Select -- "Tier 3 ($2650)" --> Req3["Req: ~10k Records\n(50 Leads)"]
+    Dash --> Select{Select Tier}
+    Select -- "Tier 1 ($1100)" --> Req1["Req: ~5k Records"]
+    Select -- "Tier 2 ($1890)" --> Req2["Req: ~8k Records"]
+    Select -- "Tier 3 ($2650)" --> Req3["Req: ~10k Records"]
     
     %% Action
-    Req1 & Req2 & Req3 --> Dash["Access Data Dashboard\n(OAuth 2.0 / SSO)"]
-    Dash --> Pull[Client Pulls Records]
+    Req1 & Req2 & Req3 --> Pull[Client Pulls Records]
     Pull --> Pay[Checkout via Stripe]
     
     %% Payment Logic
@@ -83,7 +83,8 @@ flowchart TD
     Split -->|Remainder| LC[Land Caller]
     
     %% Fulfillment
-    Split --> Zoho["Push List to Zoho (Admin)"]
+    Siftr --> Store["Push List to Client CRM (GHL)"]
+    Store --> Zoho["Push List to Zoho (Admin)"]
     Zoho --> Convoso[Upload to Convoso Dialer]
     Convoso -->|Dialing...| Leads[Leads Generated]
     Leads --> PushCRM[Push Leads to Client CRM]
